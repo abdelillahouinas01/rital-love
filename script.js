@@ -1,838 +1,132 @@
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
+const TEXT = 'RiTal';     // غيّر الاسم من هنا
+const MAX = 1500;         // أقصى عدد جزيئات (قلّله إذا بقي الجهاز بطيئاً، مثلاً 900)
+const cv = document.getElementById('c'), ctx = cv.getContext('2d');
+const COLORS = Array.from({ length: 8 }, (_, i) => `hsl(${305 + i * 7},100%,70%)`);
+let W, H, N = 0, PS = 2, X, Y, VX, VY, TX, TY, stars = [], hearts = [];
+const mouse = { x: -999, y: -999, down: false };
 
-const rebuildButton = document.getElementById("rebuild");
-
-let width = 0;
-let height = 0;
-let dpr = 1;
-
-let particles = [];
-let sparks = [];
-let waves = [];
-let stars = [];
-
-let mouse = {
-    x: -1000,
-    y: -1000,
-    active: false
-};
-
-let completed = false;
-let buildProgress = 0;
-let startTime = performance.now();
-
-const TAU = Math.PI * 2;
-
-
-/* =========================
-   RESIZE
-========================= */
+// قلب جاهز مرة واحدة (أسرع بكثير من رسمه كل إطار)
+const spr = document.createElement('canvas'); spr.width = spr.height = 64;
+(() => {
+  const c = spr.getContext('2d'), x = 32, y = 14, s = 36;
+  c.shadowBlur = 10; c.shadowColor = '#ff3d9a'; c.fillStyle = '#ff5fae';
+  c.beginPath(); c.moveTo(x, y + s * .3);
+  c.bezierCurveTo(x, y, x - s * .5, y, x - s * .5, y + s * .3);
+  c.bezierCurveTo(x - s * .5, y + s * .6, x, y + s * .8, x, y + s * 1.05);
+  c.bezierCurveTo(x, y + s * .8, x + s * .5, y + s * .6, x + s * .5, y + s * .3);
+  c.bezierCurveTo(x + s * .5, y, x, y, x, y + s * .3);
+  c.fill();
+})();
 
 function resize() {
-    dpr = Math.min(window.devicePixelRatio || 1, 2);
-
-    width = window.innerWidth;
-    height = window.innerHeight;
-
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-
-    canvas.style.width = width + "px";
-    canvas.style.height = height + "px";
-
-    ctx.setTransform(
-        dpr,
-        0,
-        0,
-        dpr,
-        0,
-        0
-    );
-
-    createStars();
+  W = cv.width = innerWidth; H = cv.height = innerHeight;
+  stars = Array.from({ length: Math.min(80, W * H / 14000 | 0) }, () => ({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.6 + .6 }));
+  buildText();
 }
 
-window.addEventListener("resize", resize);
-
-
-/* =========================
-   HEART EQUATION
-========================= */
-
-function heart(t) {
-    return {
-        x: 16 * Math.pow(Math.sin(t), 3),
-
-        y:
-            13 * Math.cos(t)
-            - 5 * Math.cos(2 * t)
-            - 2 * Math.cos(3 * t)
-            - Math.cos(4 * t)
-    };
+function buildText() {
+  const o = document.createElement('canvas'); o.width = W; o.height = H;
+  const x = o.getContext('2d'), fs = Math.min(W / 3.6, H / 3);
+  x.font = `${fs}px Pacifico, cursive`;
+  x.fillStyle = '#fff'; x.textAlign = 'center'; x.textBaseline = 'middle';
+  x.fillText(TEXT, W / 2, H * .42);
+  const d = x.getImageData(0, 0, W, H).data;
+  let g = W < 600 ? 4 : 5, pts;
+  do {
+    pts = [];
+    for (let y = 0; y < H; y += g) for (let i = 0; i < W; i += g) if (d[(y * W + i) * 4 + 3] > 128) pts.push(i, y);
+    g++;
+  } while (pts.length / 2 > MAX);
+  N = pts.length / 2; PS = Math.max(2, (g - 1) * .5);
+  // خلط النقاط ليبقى الشكل كاملاً عند تقليل العدد تلقائياً
+  for (let i = N - 1; i > 0; i--) {
+    const j = Math.random() * (i + 1) | 0;
+    [pts[2 * i], pts[2 * j]] = [pts[2 * j], pts[2 * i]];
+    [pts[2 * i + 1], pts[2 * j + 1]] = [pts[2 * j + 1], pts[2 * i + 1]];
+  }
+  X = new Float32Array(N); Y = new Float32Array(N); VX = new Float32Array(N); VY = new Float32Array(N);
+  TX = new Float32Array(N); TY = new Float32Array(N);
+  for (let i = 0; i < N; i++) { TX[i] = pts[2 * i]; TY[i] = pts[2 * i + 1]; X[i] = Math.random() * W; Y[i] = Math.random() * H; }
 }
 
-
-/* =========================
-   HEART POINT
-========================= */
-
-function heartPoint() {
-    const t = Math.random() * TAU;
-    const h = heart(t);
-
-    const scale =
-        Math.min(width, height) * 0.018;
-
-    const fill =
-        Math.sqrt(Math.random());
-
-    return {
-        x: h.x * scale * fill,
-        y: -h.y * scale * fill
-    };
+function spawn(x, y, burst) {
+  if (hearts.length > 40) return;
+  hearts.push({
+    x, y, s: burst ? 10 + Math.random() * 12 : 12 + Math.random() * 20,
+    vx: burst ? (Math.random() - .5) * 5 : 0,
+    vy: burst ? -Math.random() * 4 - 1 : -(.5 + Math.random() * .8),
+    life: 1, burst, sw: Math.random() * 6.28
+  });
 }
 
+let last = 0, slow = 0, lastPulse = 0, lastHeart = 0;
+function loop(t) {
+  const dt = t - last; last = t;
+  // جودة تلقائية: إذا تأخر الجهاز نقلّل الجزيئات
+  if (dt > 26) { if (++slow > 40 && N > 500) { N = N * .8 | 0; slow = 0; } } else if (slow > 0) slow--;
 
-/* =========================
-   STARS
-========================= */
+  ctx.clearRect(0, 0, W, H);
 
-function createStars() {
-    stars = [];
+  // نجوم
+  ctx.globalAlpha = .35 + .35 * Math.abs(Math.sin(t / 900));
+  ctx.fillStyle = '#ffdcf0'; ctx.beginPath();
+  for (const s of stars) ctx.rect(s.x, s.y, s.r, s.r);
+  ctx.fill();
 
-    const amount = Math.min(
-        180,
-        Math.floor(width * height / 9000)
-    );
+  // نبضة كل 2.6 ثانية
+  let pulse = 0;
+  if (t - lastPulse > 2600) { lastPulse = t; pulse = 2.4; }
+  const cx = W / 2, cy = H * .42, mx = mouse.x, my = mouse.y, R2 = 12000, dir = mouse.down ? -1 : 1;
+  const wob = Math.sin(t / 700) * .8;
 
-    for (let i = 0; i < amount; i++) {
-        stars.push({
-            x: Math.random() * width,
-            y: Math.random() * height,
+  for (let i = 0; i < N; i++) {
+    const px = X[i], py = Y[i];
+    let dx = px - mx, dy = py - my, d = dx * dx + dy * dy;
+    if (d < R2 && d > 1) { const f = (1 - d / R2) * 2.4 * dir / Math.sqrt(d); VX[i] += dx * f; VY[i] += dy * f; }
+    if (pulse) { dx = px - cx; dy = py - cy; const l = Math.sqrt(dx * dx + dy * dy) || 1; VX[i] += dx / l * pulse; VY[i] += dy / l * pulse; }
+    VX[i] = (VX[i] + (TX[i] + wob * ((i & 3) - 1.5) - px) * .04) * .85;
+    VY[i] = (VY[i] + (TY[i] + wob * ((i & 3) - 1.5) - py) * .04) * .85;
+    X[i] = px + VX[i]; Y[i] = py + VY[i];
+  }
 
-            size:
-                Math.random() * 1.8 + 0.3,
+  // رسم الجزيئات: 8 مجموعات لونية فقط = 8 عمليات رسم
+  for (let b = 0; b < 8; b++) {
+    ctx.globalAlpha = .55 + .4 * Math.abs(Math.sin(t / 400 + b));
+    ctx.fillStyle = COLORS[b]; ctx.beginPath();
+    for (let i = b; i < N; i += 8) ctx.rect(X[i], Y[i], PS, PS);
+    ctx.fill();
+  }
 
-            alpha: Math.random(),
-
-            speed:
-                Math.random() * 0.5 + 0.1
-        });
-    }
+  // قلوب
+  if (t - lastHeart > 600) { lastHeart = t; spawn(Math.random() * W, H + 20, false); }
+  for (let i = hearts.length - 1; i >= 0; i--) {
+    const h = hearts[i];
+    h.x += h.vx + Math.sin(t / 600 + h.sw) * .5; h.y += h.vy; h.vx *= .98;
+    h.life -= h.burst ? .012 : .003;
+    if (h.life <= 0 || h.y < -40) { hearts.splice(i, 1); continue; }
+    const sz = h.s * 1.8;
+    ctx.globalAlpha = Math.min(1, h.life) * .85;
+    ctx.drawImage(spr, h.x - sz / 2, h.y - sz / 2, sz, sz);
+  }
+  ctx.globalAlpha = 1;
+  requestAnimationFrame(loop);
 }
 
-
-/* =========================
-   PARTICLES
-========================= */
-
-function createParticles() {
-    particles = [];
-
-    const count = Math.min(
-        4200,
-        Math.max(
-            1800,
-            Math.floor(width * height / 320)
-        )
-    );
-
-    const centerX = width / 2;
-    const centerY = height * 0.44;
-
-    for (let i = 0; i < count; i++) {
-
-        const target = heartPoint();
-
-        const startX =
-            centerX +
-            (Math.random() - 0.5) *
-            width * 0.8;
-
-        const startY =
-            height +
-            Math.random() * 180;
-
-        particles.push({
-            x: startX,
-            y: startY,
-
-            tx: centerX + target.x,
-            ty: centerY + target.y,
-
-            vx: 0,
-            vy: 0,
-
-            size:
-                Math.random() * 1.8 + 0.5,
-
-            delay:
-                Math.random() * 0.18,
-
-            phase:
-                Math.random() * TAU,
-
-            hue:
-                Math.random() * 90 + 285,
-
-            alpha:
-                Math.random() * 0.65 + 0.35,
-
-            glow:
-                Math.random() * 12 + 5
-        });
-    }
-}
-
-
-/* =========================
-   SPARKS
-========================= */
-
-function createSpark(
-    x,
-    y,
-    amount = 1
-) {
-    for (let i = 0; i < amount; i++) {
-
-        const angle =
-            Math.random() * TAU;
-
-        const speed =
-            Math.random() * 5 + 1;
-
-        sparks.push({
-            x,
-            y,
-
-            vx:
-                Math.cos(angle) * speed,
-
-            vy:
-                Math.sin(angle) * speed,
-
-            life: 1,
-
-            decay:
-                Math.random() * 0.025 + 0.015,
-
-            size:
-                Math.random() * 2.5 + 0.5,
-
-            hue:
-                Math.random() * 100 + 280
-        });
-    }
-}
-
-
-/* =========================
-   WAVES
-========================= */
-
-function createWave(x, y) {
-    waves.push({
-        x,
-        y,
-
-        radius: 10,
-
-        alpha: 1,
-
-        speed: 8
-    });
-}
-
-
-/* =========================
-   INITIALIZE
-========================= */
-
-function initialize() {
-    particles = [];
-    sparks = [];
-    waves = [];
-
-    completed = false;
-    buildProgress = 0;
-
-    startTime = performance.now();
-
-    createParticles();
-}
-
-
-/* =========================
-   MOUSE
-========================= */
-
-window.addEventListener(
-    "pointermove",
-    event => {
-        mouse.x = event.clientX;
-        mouse.y = event.clientY;
-        mouse.active = true;
-    }
-);
-
-window.addEventListener(
-    "pointerleave",
-    () => {
-        mouse.active = false;
-    }
-);
-
-
-/* =========================
-   CLICK INTERACTION
-========================= */
-
-window.addEventListener(
-    "pointerdown",
-    event => {
-
-        mouse.x = event.clientX;
-        mouse.y = event.clientY;
-
-        createWave(
-            mouse.x,
-            mouse.y
-        );
-
-        createSpark(
-            mouse.x,
-            mouse.y,
-            25
-        );
-    }
-);
-
-
-/* =========================
-   SMOOTH HEART BUILD
-========================= */
-
-function updateParticles(time) {
-
-    const elapsed =
-        time - startTime;
-
-    /*
-       2400ms:
-       سريع لكن سلس
-    */
-
-    const BUILD_DURATION = 2400;
-
-    buildProgress =
-        Math.min(
-            1,
-            elapsed / BUILD_DURATION
-        );
-
-    const centerX =
-        width / 2;
-
-    const centerY =
-        height * 0.44;
-
-    for (const p of particles) {
-
-        const localProgress =
-            Math.max(
-                0,
-                Math.min(
-                    1,
-                    (buildProgress - p.delay) /
-                    (1 - p.delay)
-                )
-            );
-
-        /*
-           SmoothStep
-        */
-
-        const eased =
-            localProgress *
-            localProgress *
-            (3 - 2 * localProgress);
-
-        /*
-           البداية من الأسفل
-        */
-
-        const verticalGate =
-            Math.min(
-                1,
-                eased * 1.22
-            );
-
-        let targetY =
-            height -
-            (height - p.ty) *
-            verticalGate;
-
-        /*
-           موجة خفيفة أثناء التشكيل
-        */
-
-        targetY +=
-            Math.sin(
-                time * 0.004 +
-                p.phase
-            ) *
-            (1 - eased) *
-            14;
-
-        const targetX =
-            centerX +
-            (p.tx - centerX) *
-            eased;
-
-        /*
-           حركة سلسة بدون اهتزاز زائد
-        */
-
-        p.vx +=
-            (targetX - p.x) *
-            0.045;
-
-        p.vy +=
-            (targetY - p.y) *
-            0.045;
-
-        p.vx *= 0.82;
-        p.vy *= 0.82;
-
-        p.x += p.vx;
-        p.y += p.vy;
-
-
-        /* =========================
-           MOUSE INTERACTION
-        ========================= */
-
-        if (mouse.active) {
-
-            const dx =
-                p.x - mouse.x;
-
-            const dy =
-                p.y - mouse.y;
-
-            const dist =
-                Math.sqrt(
-                    dx * dx +
-                    dy * dy
-                );
-
-            const radius = 120;
-
-            if (dist < radius) {
-
-                const force =
-                    (1 - dist / radius) *
-                    2.2;
-
-                p.x +=
-                    (dx / (dist || 1)) *
-                    force;
-
-                p.y +=
-                    (dy / (dist || 1)) *
-                    force;
-            }
-        }
-    }
-
-
-    /* =========================
-       COMPLETED
-    ========================= */
-
-    if (
-        buildProgress >= 1 &&
-        !completed
-    ) {
-        completed = true;
-
-        /*
-           لا يوجد انفجار هنا.
-           القلب يبقى مكتملًا.
-        */
-    }
-}
-
-
-/* =========================
-   SPARK UPDATE
-========================= */
-
-function updateSparks() {
-
-    for (
-        let i = sparks.length - 1;
-        i >= 0;
-        i--
-    ) {
-
-        const s = sparks[i];
-
-        s.x += s.vx;
-        s.y += s.vy;
-
-        s.vx *= 0.97;
-        s.vy *= 0.97;
-
-        s.vy += 0.025;
-
-        s.life -= s.decay;
-
-        if (s.life <= 0) {
-            sparks.splice(i, 1);
-        }
-    }
-}
-
-
-/* =========================
-   WAVES UPDATE
-========================= */
-
-function updateWaves() {
-
-    for (
-        let i = waves.length - 1;
-        i >= 0;
-        i--
-    ) {
-
-        const w = waves[i];
-
-        w.radius += w.speed;
-
-        w.alpha *= 0.965;
-
-        if (w.alpha < 0.01) {
-            waves.splice(i, 1);
-        }
-    }
-}
-
-
-/* =========================
-   DRAW STARS
-========================= */
-
-function drawStars(time) {
-
-    for (const s of stars) {
-
-        const pulse =
-            0.5 +
-            Math.sin(
-                time * 0.002 * s.speed
-            ) * 0.5;
-
-        ctx.globalAlpha =
-            s.alpha * pulse;
-
-        ctx.fillStyle =
-            "#ffffff";
-
-        ctx.beginPath();
-
-        ctx.arc(
-            s.x,
-            s.y,
-            s.size,
-            0,
-            TAU
-        );
-
-        ctx.fill();
-    }
-
-    ctx.globalAlpha = 1;
-}
-
-
-/* =========================
-   DRAW PARTICLES
-========================= */
-
-function drawParticles(time) {
-
-    const pulse =
-        completed
-            ? 1 +
-              Math.sin(
-                  time * 0.004
-              ) * 0.025
-            : 1;
-
-    for (const p of particles) {
-
-        const x =
-            width / 2 +
-            (p.x - width / 2) *
-            pulse;
-
-        const y =
-            height * 0.44 +
-            (p.y - height * 0.44) *
-            pulse;
-
-        /*
-           ألوان حية ومتغيرة
-        */
-
-        const hue =
-            (
-                p.hue +
-                time * 0.025 +
-                y * 0.04
-            ) % 360;
-
-        const alpha =
-            completed
-                ? p.alpha
-                : Math.min(
-                    1,
-                    p.alpha *
-                    (buildProgress + 0.25)
-                );
-
-        ctx.globalAlpha = alpha;
-
-        ctx.shadowBlur =
-            p.glow;
-
-        ctx.shadowColor =
-            `hsl(${hue}, 100%, 65%)`;
-
-        ctx.fillStyle =
-            `hsl(${hue}, 100%, 65%)`;
-
-        ctx.beginPath();
-
-        ctx.arc(
-            x,
-            y,
-            p.size,
-            0,
-            TAU
-        );
-
-        ctx.fill();
-    }
-
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
-}
-
-
-/* =========================
-   DRAW SPARKS
-========================= */
-
-function drawSparks() {
-
-    for (const s of sparks) {
-
-        ctx.globalAlpha =
-            s.life;
-
-        const hue =
-            s.hue;
-
-        ctx.shadowBlur = 18;
-
-        ctx.shadowColor =
-            `hsl(${hue},100%,65%)`;
-
-        ctx.fillStyle =
-            `hsl(${hue},100%,70%)`;
-
-        ctx.beginPath();
-
-        ctx.arc(
-            s.x,
-            s.y,
-            s.size,
-            0,
-            TAU
-        );
-
-        ctx.fill();
-    }
-
-    ctx.shadowBlur = 0;
-
-    ctx.globalAlpha = 1;
-}
-
-
-/* =========================
-   DRAW WAVES
-========================= */
-
-function drawWaves() {
-
-    for (const w of waves) {
-
-        ctx.globalAlpha =
-            w.alpha;
-
-        ctx.lineWidth = 2;
-
-        ctx.strokeStyle =
-            `rgba(255,100,220,${w.alpha})`;
-
-        ctx.shadowBlur = 25;
-
-        ctx.shadowColor =
-            "#ff3fd4";
-
-        ctx.beginPath();
-
-        ctx.arc(
-            w.x,
-            w.y,
-            w.radius,
-            0,
-            TAU
-        );
-
-        ctx.stroke();
-    }
-
-    ctx.shadowBlur = 0;
-    ctx.globalAlpha = 1;
-}
-
-
-/* =========================
-   BACKGROUND GLOW
-========================= */
-
-function drawBackground(time) {
-
-    const cx =
-        width / 2;
-
-    const cy =
-        height * 0.44;
-
-    const radius =
-        Math.min(width, height) *
-        0.42;
-
-    const gradient =
-        ctx.createRadialGradient(
-            cx,
-            cy,
-            0,
-            cx,
-            cy,
-            radius
-        );
-
-    const pulse =
-        0.5 +
-        Math.sin(
-            time * 0.002
-        ) * 0.15;
-
-    gradient.addColorStop(
-        0,
-        `rgba(
-            255,
-            40,
-            190,
-            ${0.10 + pulse * 0.08}
-        )`
-    );
-
-    gradient.addColorStop(
-        0.35,
-        "rgba(130,40,255,0.06)"
-    );
-
-    gradient.addColorStop(
-        1,
-        "rgba(0,0,0,0)"
-    );
-
-    ctx.fillStyle =
-        gradient;
-
-    ctx.fillRect(
-        0,
-        0,
-        width,
-        height
-    );
-}
-
-
-/* =========================
-   ANIMATION LOOP
-========================= */
-
-function animate(time) {
-
-    ctx.clearRect(
-        0,
-        0,
-        width,
-        height
-    );
-
-    drawBackground(time);
-
-    drawStars(time);
-
-    updateParticles(time);
-
-    updateSparks();
-
-    updateWaves();
-
-    drawParticles(time);
-
-    drawSparks();
-
-    drawWaves();
-
-    requestAnimationFrame(
-        animate
-    );
-}
-
-
-/* =========================
-   REBUILD
-========================= */
-
-rebuildButton.addEventListener(
-    "click",
-    () => {
-        initialize();
-    }
-);
-
-
-/* =========================
-   START
-========================= */
-
-resize();
-
-initialize();
-
-requestAnimationFrame(
-    animate
-);
+// تفاعل
+const move = e => { mouse.x = e.clientX; mouse.y = e.clientY; };
+addEventListener('pointermove', move, { passive: true });
+addEventListener('pointerdown', e => { move(e); mouse.down = true; for (let i = 0; i < 8; i++) spawn(e.clientX, e.clientY, true); });
+addEventListener('pointerup', e => {
+  mouse.down = false;
+  const R = 260, R2 = R * R;
+  for (let i = 0; i < N; i++) {
+    const dx = X[i] - e.clientX, dy = Y[i] - e.clientY, d = dx * dx + dy * dy;
+    if (d < R2) { const l = Math.sqrt(d) || 1, f = (1 - l / R) * 26; VX[i] += dx / l * f; VY[i] += dy / l * f; }
+  }
+  if (e.pointerType === 'touch') mouse.x = mouse.y = -999;
+});
+document.addEventListener('mouseleave', () => { mouse.x = mouse.y = -999; });
+
+addEventListener('resize', () => { clearTimeout(resize.t); resize.t = setTimeout(resize, 250); });
+Promise.race([document.fonts.load('100px Pacifico'), new Promise(r => setTimeout(r, 1500))])
+  .then(() => { resize(); requestAnimationFrame(loop); });
