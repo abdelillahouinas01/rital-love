@@ -18,14 +18,8 @@ let mouse = {
     active: false
 };
 
-let state = "building";
-
-let buildProgress = 0;
-
 let completed = false;
-
-let explosionPower = 0;
-
+let buildProgress = 0;
 let startTime = performance.now();
 
 const TAU = Math.PI * 2;
@@ -36,7 +30,6 @@ const TAU = Math.PI * 2;
 ========================= */
 
 function resize() {
-
     dpr = Math.min(window.devicePixelRatio || 1, 2);
 
     width = window.innerWidth;
@@ -58,7 +51,6 @@ function resize() {
     );
 
     createStars();
-
 }
 
 window.addEventListener("resize", resize);
@@ -69,27 +61,15 @@ window.addEventListener("resize", resize);
 ========================= */
 
 function heart(t) {
-
     return {
-
-        x:
-            16 *
-            Math.pow(
-                Math.sin(t),
-                3
-            ),
+        x: 16 * Math.pow(Math.sin(t), 3),
 
         y:
-            13 *
-                Math.cos(t)
-                - 5 *
-                Math.cos(2 * t)
-                - 2 *
-                Math.cos(3 * t)
-                - Math.cos(4 * t)
-
+            13 * Math.cos(t)
+            - 5 * Math.cos(2 * t)
+            - 2 * Math.cos(3 * t)
+            - Math.cos(4 * t)
     };
-
 }
 
 
@@ -98,201 +78,116 @@ function heart(t) {
 ========================= */
 
 function heartPoint() {
-
-    const t =
-        Math.random() *
-        TAU;
-
-    const h =
-        heart(t);
+    const t = Math.random() * TAU;
+    const h = heart(t);
 
     const scale =
-        Math.min(width, height) *
-        0.018;
-
-    /*
-       random interior distribution
-    */
+        Math.min(width, height) * 0.018;
 
     const fill =
         Math.sqrt(Math.random());
 
     return {
-
-        x:
-            h.x *
-            scale *
-            fill,
-
-        y:
-            -h.y *
-            scale *
-            fill
-
+        x: h.x * scale * fill,
+        y: -h.y * scale * fill
     };
-
 }
 
 
 /* =========================
-   CREATE STARS
+   STARS
 ========================= */
 
 function createStars() {
-
     stars = [];
 
-    const amount =
-        Math.min(
-            180,
-            Math.floor(
-                width * height / 9000
-            )
-        );
+    const amount = Math.min(
+        180,
+        Math.floor(width * height / 9000)
+    );
 
-    for (
-        let i = 0;
-        i < amount;
-        i++
-    ) {
-
+    for (let i = 0; i < amount; i++) {
         stars.push({
-
-            x:
-                Math.random() *
-                width,
-
-            y:
-                Math.random() *
-                height,
+            x: Math.random() * width,
+            y: Math.random() * height,
 
             size:
-                Math.random() *
-                1.8 +
-                0.3,
+                Math.random() * 1.8 + 0.3,
 
-            alpha:
-                Math.random(),
+            alpha: Math.random(),
 
             speed:
-                Math.random() *
-                0.5 +
-                0.1
-
+                Math.random() * 0.5 + 0.1
         });
-
     }
-
 }
 
 
 /* =========================
-   CREATE PARTICLES
+   PARTICLES
 ========================= */
 
 function createParticles() {
-
     particles = [];
 
-    const count =
-        Math.min(
-            4200,
-            Math.max(
-                1800,
-                Math.floor(
-                    width * height / 320
-                )
-            )
-        );
+    const count = Math.min(
+        4200,
+        Math.max(
+            1800,
+            Math.floor(width * height / 320)
+        )
+    );
 
-    const centerX =
-        width / 2;
+    const centerX = width / 2;
+    const centerY = height * 0.44;
 
-    const centerY =
-        height * 0.44;
+    for (let i = 0; i < count; i++) {
 
-    for (
-        let i = 0;
-        i < count;
-        i++
-    ) {
-
-        const target =
-            heartPoint();
-
-        /*
-           البداية من أسفل الشاشة
-        */
+        const target = heartPoint();
 
         const startX =
             centerX +
             (Math.random() - 0.5) *
-            width *
-            0.8;
+            width * 0.8;
 
         const startY =
             height +
-            Math.random() *
-            250;
+            Math.random() * 180;
 
         particles.push({
-
             x: startX,
-
             y: startY,
 
-            tx:
-                centerX +
-                target.x,
-
-            ty:
-                centerY +
-                target.y,
+            tx: centerX + target.x,
+            ty: centerY + target.y,
 
             vx: 0,
-
             vy: 0,
 
             size:
-                Math.random() *
-                1.8 +
-                0.5,
+                Math.random() * 1.8 + 0.5,
 
             delay:
-                Math.random() *
-                0.38,
-
-            life:
-                Math.random(),
+                Math.random() * 0.18,
 
             phase:
-                Math.random() *
-                TAU,
+                Math.random() * TAU,
 
             hue:
-                Math.random() *
-                80 +
-                300,
+                Math.random() * 90 + 285,
 
             alpha:
-                Math.random() *
-                0.65 +
-                0.35,
+                Math.random() * 0.65 + 0.35,
 
             glow:
-                Math.random() *
-                12 +
-                5
-
+                Math.random() * 12 + 5
         });
-
     }
-
 }
 
 
 /* =========================
-   SPARK
+   SPARKS
 ========================= */
 
 function createSpark(
@@ -300,73 +195,46 @@ function createSpark(
     y,
     amount = 1
 ) {
-
-    for (
-        let i = 0;
-        i < amount;
-        i++
-    ) {
+    for (let i = 0; i < amount; i++) {
 
         const angle =
-            Math.random() *
-            TAU;
+            Math.random() * TAU;
 
         const speed =
-            Math.random() *
-            5 +
-            1;
+            Math.random() * 5 + 1;
 
         sparks.push({
-
             x,
-
             y,
 
             vx:
-                Math.cos(angle) *
-                speed,
+                Math.cos(angle) * speed,
 
             vy:
-                Math.sin(angle) *
-                speed,
+                Math.sin(angle) * speed,
 
             life: 1,
 
             decay:
-                Math.random() *
-                0.025 +
-                0.015,
+                Math.random() * 0.025 + 0.015,
 
             size:
-                Math.random() *
-                2.5 +
-                0.5,
+                Math.random() * 2.5 + 0.5,
 
             hue:
-                Math.random() *
-                100 +
-                280
-
+                Math.random() * 100 + 280
         });
-
     }
-
 }
 
 
 /* =========================
-   WAVE
+   WAVES
 ========================= */
 
-function createWave(
-    x,
-    y
-) {
-
+function createWave(x, y) {
     waves.push({
-
         x,
-
         y,
 
         radius: 10,
@@ -374,9 +242,7 @@ function createWave(
         alpha: 1,
 
         speed: 8
-
     });
-
 }
 
 
@@ -385,26 +251,16 @@ function createWave(
 ========================= */
 
 function initialize() {
-
     particles = [];
-
     sparks = [];
-
     waves = [];
 
     completed = false;
-
-    explosionPower = 0;
-
-    state = "building";
-
     buildProgress = 0;
 
-    startTime =
-        performance.now();
+    startTime = performance.now();
 
     createParticles();
-
 }
 
 
@@ -415,41 +271,30 @@ function initialize() {
 window.addEventListener(
     "pointermove",
     event => {
-
-        mouse.x =
-            event.clientX;
-
-        mouse.y =
-            event.clientY;
-
+        mouse.x = event.clientX;
+        mouse.y = event.clientY;
         mouse.active = true;
-
     }
 );
 
 window.addEventListener(
     "pointerleave",
     () => {
-
         mouse.active = false;
-
     }
 );
 
 
 /* =========================
-   CLICK
+   CLICK INTERACTION
 ========================= */
 
 window.addEventListener(
     "pointerdown",
     event => {
 
-        mouse.x =
-            event.clientX;
-
-        mouse.y =
-            event.clientY;
+        mouse.x = event.clientX;
+        mouse.y = event.clientY;
 
         createWave(
             mouse.x,
@@ -461,29 +306,30 @@ window.addEventListener(
             mouse.y,
             25
         );
-
     }
 );
 
 
 /* =========================
-   BUILD HEART
+   SMOOTH HEART BUILD
 ========================= */
 
 function updateParticles(time) {
 
     const elapsed =
-        time -
-        startTime;
+        time - startTime;
 
     /*
-       أسرع من النسخة السابقة
+       2400ms:
+       سريع لكن سلس
     */
+
+    const BUILD_DURATION = 2400;
 
     buildProgress =
         Math.min(
             1,
-            elapsed / 4200
+            elapsed / BUILD_DURATION
         );
 
     const centerX =
@@ -492,51 +338,44 @@ function updateParticles(time) {
     const centerY =
         height * 0.44;
 
-    for (
-        const p of particles
-    ) {
+    for (const p of particles) {
 
         const localProgress =
             Math.max(
                 0,
                 Math.min(
                     1,
-                    (buildProgress -
-                        p.delay) /
-                        (1 - p.delay)
+                    (buildProgress - p.delay) /
+                    (1 - p.delay)
                 )
             );
 
+        /*
+           SmoothStep
+        */
+
         const eased =
-            1 -
-            Math.pow(
-                1 - localProgress,
-                3
-            );
-
-        const desiredX =
-            p.tx;
-
-        const desiredY =
-            p.ty;
+            localProgress *
+            localProgress *
+            (3 - 2 * localProgress);
 
         /*
-           حركة بناء من الأسفل
+           البداية من الأسفل
         */
 
         const verticalGate =
             Math.min(
                 1,
-                eased * 1.35
+                eased * 1.22
             );
 
         let targetY =
             height -
-            (height - desiredY) *
+            (height - p.ty) *
             verticalGate;
 
         /*
-           حركة موجية صغيرة أثناء البناء
+           موجة خفيفة أثناء التشكيل
         */
 
         targetY +=
@@ -545,46 +384,43 @@ function updateParticles(time) {
                 p.phase
             ) *
             (1 - eased) *
-            25;
+            14;
 
         const targetX =
-            p.x +
-            (desiredX - p.x) *
+            centerX +
+            (p.tx - centerX) *
             eased;
 
         /*
-           انجذاب للقلب
+           حركة سلسة بدون اهتزاز زائد
         */
 
         p.vx +=
             (targetX - p.x) *
-            0.035;
+            0.045;
 
         p.vy +=
             (targetY - p.y) *
-            0.035;
+            0.045;
 
-        p.vx *= 0.88;
-
-        p.vy *= 0.88;
+        p.vx *= 0.82;
+        p.vy *= 0.82;
 
         p.x += p.vx;
-
         p.y += p.vy;
 
-        /*
-           تفاعل الماوس
-        */
+
+        /* =========================
+           MOUSE INTERACTION
+        ========================= */
 
         if (mouse.active) {
 
             const dx =
-                p.x -
-                mouse.x;
+                p.x - mouse.x;
 
             const dy =
-                p.y -
-                mouse.y;
+                p.y - mouse.y;
 
             const dist =
                 Math.sqrt(
@@ -592,14 +428,13 @@ function updateParticles(time) {
                     dy * dy
                 );
 
-            const radius = 115;
+            const radius = 120;
 
             if (dist < radius) {
 
                 const force =
-                    (1 -
-                        dist / radius) *
-                    2.8;
+                    (1 - dist / radius) *
+                    2.2;
 
                 p.x +=
                     (dx / (dist || 1)) *
@@ -608,101 +443,31 @@ function updateParticles(time) {
                 p.y +=
                     (dy / (dist || 1)) *
                     force;
-
             }
-
         }
-
     }
 
-    /*
-       عند اكتمال القلب
-    */
+
+    /* =========================
+       COMPLETED
+    ========================= */
 
     if (
         buildProgress >= 1 &&
         !completed
     ) {
-
         completed = true;
 
-        state = "complete";
-
-        triggerExplosion();
-
+        /*
+           لا يوجد انفجار هنا.
+           القلب يبقى مكتملًا.
+        */
     }
-
 }
 
 
 /* =========================
-   EXPLOSION
-========================= */
-
-function triggerExplosion() {
-
-    const cx =
-        width / 2;
-
-    const cy =
-        height * 0.44;
-
-    /*
-       انفجار أول
-    */
-
-    for (
-        let i = 0;
-        i < 650;
-        i++
-    ) {
-
-        createSpark(
-            cx,
-            cy,
-            1
-        );
-
-    }
-
-    /*
-       موجات متعددة
-    */
-
-    createWave(
-        cx,
-        cy
-    );
-
-    setTimeout(
-        () => {
-
-            createWave(
-                cx,
-                cy
-            );
-
-        },
-        180
-    );
-
-    setTimeout(
-        () => {
-
-            createWave(
-                cx,
-                cy
-            );
-
-        },
-        380
-    );
-
-}
-
-
-/* =========================
-   UPDATE SPARKS
+   SPARK UPDATE
 ========================= */
 
 function updateSparks() {
@@ -713,15 +478,12 @@ function updateSparks() {
         i--
     ) {
 
-        const s =
-            sparks[i];
+        const s = sparks[i];
 
         s.x += s.vx;
-
         s.y += s.vy;
 
         s.vx *= 0.97;
-
         s.vy *= 0.97;
 
         s.vy += 0.025;
@@ -729,18 +491,14 @@ function updateSparks() {
         s.life -= s.decay;
 
         if (s.life <= 0) {
-
             sparks.splice(i, 1);
-
         }
-
     }
-
 }
 
 
 /* =========================
-   UPDATE WAVES
+   WAVES UPDATE
 ========================= */
 
 function updateWaves() {
@@ -751,25 +509,16 @@ function updateWaves() {
         i--
     ) {
 
-        const w =
-            waves[i];
+        const w = waves[i];
 
-        w.radius +=
-            w.speed;
+        w.radius += w.speed;
 
-        w.alpha *=
-            0.965;
+        w.alpha *= 0.965;
 
-        if (
-            w.alpha < 0.01
-        ) {
-
+        if (w.alpha < 0.01) {
             waves.splice(i, 1);
-
         }
-
     }
-
 }
 
 
@@ -779,21 +528,16 @@ function updateWaves() {
 
 function drawStars(time) {
 
-    for (
-        const s of stars
-    ) {
+    for (const s of stars) {
 
         const pulse =
             0.5 +
             Math.sin(
-                time * 0.002 *
-                s.speed
-            ) *
-            0.5;
+                time * 0.002 * s.speed
+            ) * 0.5;
 
         ctx.globalAlpha =
-            s.alpha *
-            pulse;
+            s.alpha * pulse;
 
         ctx.fillStyle =
             "#ffffff";
@@ -809,11 +553,9 @@ function drawStars(time) {
         );
 
         ctx.fill();
-
     }
 
     ctx.globalAlpha = 1;
-
 }
 
 
@@ -828,32 +570,23 @@ function drawParticles(time) {
             ? 1 +
               Math.sin(
                   time * 0.004
-              ) *
-              0.035
+              ) * 0.025
             : 1;
 
-    for (
-        const p of particles
-    ) {
+    for (const p of particles) {
 
-        let x =
+        const x =
             width / 2 +
-            (
-                p.x -
-                width / 2
-            ) *
+            (p.x - width / 2) *
             pulse;
 
-        let y =
+        const y =
             height * 0.44 +
-            (
-                p.y -
-                height * 0.44
-            ) *
+            (p.y - height * 0.44) *
             pulse;
 
         /*
-           dynamic rainbow color
+           ألوان حية ومتغيرة
         */
 
         const hue =
@@ -869,15 +602,10 @@ function drawParticles(time) {
                 : Math.min(
                     1,
                     p.alpha *
-                    (buildProgress + 0.2)
+                    (buildProgress + 0.25)
                 );
 
-        ctx.globalAlpha =
-            alpha;
-
-        /*
-           Glow
-        */
+        ctx.globalAlpha = alpha;
 
         ctx.shadowBlur =
             p.glow;
@@ -899,13 +627,10 @@ function drawParticles(time) {
         );
 
         ctx.fill();
-
     }
 
     ctx.shadowBlur = 0;
-
     ctx.globalAlpha = 1;
-
 }
 
 
@@ -915,9 +640,7 @@ function drawParticles(time) {
 
 function drawSparks() {
 
-    for (
-        const s of sparks
-    ) {
+    for (const s of sparks) {
 
         ctx.globalAlpha =
             s.life;
@@ -944,13 +667,11 @@ function drawSparks() {
         );
 
         ctx.fill();
-
     }
 
     ctx.shadowBlur = 0;
 
     ctx.globalAlpha = 1;
-
 }
 
 
@@ -960,9 +681,7 @@ function drawSparks() {
 
 function drawWaves() {
 
-    for (
-        const w of waves
-    ) {
+    for (const w of waves) {
 
         ctx.globalAlpha =
             w.alpha;
@@ -988,13 +707,10 @@ function drawWaves() {
         );
 
         ctx.stroke();
-
     }
 
     ctx.shadowBlur = 0;
-
     ctx.globalAlpha = 1;
-
 }
 
 
@@ -1028,12 +744,16 @@ function drawBackground(time) {
         0.5 +
         Math.sin(
             time * 0.002
-        ) *
-        0.15;
+        ) * 0.15;
 
     gradient.addColorStop(
         0,
-        `rgba(255,40,190,${0.10 + pulse * 0.08})`
+        `rgba(
+            255,
+            40,
+            190,
+            ${0.10 + pulse * 0.08}
+        )`
     );
 
     gradient.addColorStop(
@@ -1055,12 +775,11 @@ function drawBackground(time) {
         width,
         height
     );
-
 }
 
 
 /* =========================
-   MAIN LOOP
+   ANIMATION LOOP
 ========================= */
 
 function animate(time) {
@@ -1091,20 +810,17 @@ function animate(time) {
     requestAnimationFrame(
         animate
     );
-
 }
 
 
 /* =========================
-   REBUILD BUTTON
+   REBUILD
 ========================= */
 
 rebuildButton.addEventListener(
     "click",
     () => {
-
         initialize();
-
     }
 );
 
